@@ -1,6 +1,7 @@
 #include <kkp/kkp_traits.hpp>
 #include <kkp/coro/task.hpp>
 #include <print>
+#include <thread_pool/thread_pool.h>
 
 kkp::coro::task<int> bar() {
     // co_await std::suspend_always{};
@@ -17,4 +18,10 @@ int main(int argc, char *argv[]) {
     auto task = foo();
     task.take_handle()();
 
+    dp::thread_pool pool(1);
+    pool.enqueue_detach([] {
+        std::println("Hello from thread pool");
+    });
+
+    pool.wait_for_tasks();
 }
