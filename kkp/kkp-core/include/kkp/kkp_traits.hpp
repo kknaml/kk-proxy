@@ -1,5 +1,8 @@
 #pragma once
 
+#include <expected>
+#include <system_error>
+
 namespace kkp {
 
     class non_copy {
@@ -11,5 +14,9 @@ namespace kkp {
 
     struct unit_t final {};
     constexpr inline unit_t unit{};
+
+    template<typename T>
+    using result = std::expected<T, std::error_code>;
+
 
 } // namespace kkp
