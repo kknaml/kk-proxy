@@ -11,7 +11,7 @@ namespace kkp::uring {
 
         result<void> await_resume() const noexcept {
             int res = this->data_.result_;
-            if (res >= 0) [[likely]] return std::expected<void, std::error_code>{};
+            if (res == -ETIME) [[likely]] return std::expected<void, std::error_code>{};
             return std::unexpected(std::error_code(-res, std::system_category()));
         }
 

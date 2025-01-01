@@ -38,12 +38,16 @@ namespace kkp::fs {
             }
         }
 
-        auto read(std::span<uint8_t> buf, int len) -> coro::awaitable_result<int> auto {
-            return uring::read(ring_, fd_, buf.data(), len, 0);
+        auto read(std::span<uint8_t> buf, int len, int off = 0) -> coro::awaitable_result<int> auto {
+            return uring::read(ring_, fd_, buf.data(), len, off);
         }
 
         auto read(std::span<uint8_t> buf) -> coro::awaitable_result<int> auto {
             return this->read(buf, buf.size());
+        }
+
+        auto write(std::span<uint8_t> buf, int len, int off = 0) -> coro::awaitable_result<int> auto {
+            return uring::write(ring_, fd_, buf.data(), len, off);
         }
 
         int fd() const noexcept {

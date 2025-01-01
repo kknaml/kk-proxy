@@ -6,7 +6,7 @@
 namespace kkp {
 
     inline auto delay(io_uring *ring, __kernel_timespec *ts) -> coro::awaitable_result<void> auto {
-        return uring::timeout{ring, ts, 1, IORING_TIMEOUT_ETIME_SUCCESS};
+        return uring::timeout{ring, ts, 0, IORING_TIMEOUT_ETIME_SUCCESS};
     }
 
     inline auto delay(io_uring *ring, long mills) -> coro::awaitable_result<void> auto {
@@ -16,16 +16,14 @@ namespace kkp {
         return delay(ring, &ts);
     }
 
-    inline auto delay(__kernel_timespec *ts) -> task<> {
+    inline auto delay(__kernel_timespec *ts) -> task<result<void>> {
         auto *context = co_await coro::this_context;
-        co_await delay(context->ring(), ts);
-        co_return;
+        co_return co_await delay(context->ring(), ts);
     }
 
-    inline auto delay(long mills) -> task<> {
+    inline auto delay(long mills) -> task<result<void>> {
         auto *context = co_await coro::this_context;
-        co_await delay(context->ring(), mills);
-        co_return;
+        co_return co_await delay(context->ring(), mills);
     }
 
 } // namespace kkp

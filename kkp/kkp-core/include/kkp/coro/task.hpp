@@ -2,8 +2,10 @@
 
 #include <coroutine>
 #include <kkp/kkp_traits.hpp>
+#include <kkp/coro/promise.hpp>
 #include <exception>
 #include <optional>
+#include <ostream>
 #include <utility>
 #include <concepts>
 #include <print>
@@ -50,15 +52,24 @@ namespace kkp::coro {
 
             template<typename Promise>
             std::coroutine_handle<> await_suspend(std::coroutine_handle<Promise> callee) const noexcept {
+                spdlog::debug("task final auspend");
                 if (callee.promise().caller_) {
+                    spdlog::debug("return caller");
                     return callee.promise().caller_;
                 }
                 if (callee.promise().ex_) {
                     // TODO handle exception
+                    spdlog::error("callee error ");
                 }
-                task_finish(static_cast<io_context *>(callee.promise().context_));
-                callee.destroy();
-                return std::noop_coroutine();
+                if (flag::is_daemon(callee.promise().flags_)) [[unlikely]] {
+                    spdlog::debug("is deamon xxxxxxxxxxxxx");
+                    return std::noop_coroutine();
+                } else {
+                    task_finish(static_cast<io_context *>(callee.promise().context_));
+                    spdlog::debug("destroy");
+                    callee.destroy();
+                    return std::noop_coroutine();
+                }
             }
 
             constexpr void await_resume() const noexcept {}
@@ -69,14 +80,24 @@ namespace kkp::coro {
             std::coroutine_handle<Promise> callee_;
 
             bool await_ready() const noexcept {
+                spdlog::debug("await ready");
                 return !callee_ || callee_.done();
             }
 
             template<typename Promise2>
             std::coroutine_handle<> await_suspend(std::coroutine_handle<Promise2> caller) {
-                callee_.promise().caller_ = caller;
-                callee_.promise().context_ = caller.promise().context_;
-                return callee_;
+                auto &callee_promise = callee_.promise();
+                if (flag::is_daemon(callee_promise.flags_)) {
+                    spdlog::debug("is deamon: {}", caller.done());
+
+                    callee_promise.caller_ = caller;
+                    callee_promise.context_ = caller.promise().context_;
+                    return std::noop_coroutine();
+                } else {
+                    callee_promise.caller_ = caller;
+                    callee_promise.context_ = caller.promise().context_;
+                    return callee_;
+                }
             }
 
         };
@@ -84,12 +105,12 @@ namespace kkp::coro {
         struct base_task_promise {
 
             // void *operator new(std::size_t size) {
-            //     std::println("task allocate size: {}", size);
+            //     spdlog::debug("task allocate size: {}", size);
             //     return ::operator new(size);
             // }
             //
             // void operator delete(void *ptr, std::size_t size) {
-            //     std::println("task free  size: {}", size);
+            //     spdlog::debug("task free  size: {}", size);
             //     ::operator delete(ptr);
             // }
 
@@ -124,7 +145,7 @@ namespace kkp::coro {
                         return std::move(this->callee_.promise()).get_value();
                     }
                 };
-                return awaiter{task.handle()};
+                return awaiter{task.take_handle()};
             }
 
             template<typename T>
@@ -140,6 +161,7 @@ namespace kkp::coro {
             std::coroutine_handle<> caller_ {nullptr};
             std::exception_ptr ex_{nullptr};
             void *context_{nullptr};
+            uint64_t flags_ {0};
         };
 
         template<typename T>
@@ -159,6 +181,10 @@ namespace kkp::coro {
             T get_value() && {
                 check_error();
                 return std::move(value_.value());
+            }
+
+            bool has_value() const noexcept {
+                return value_.has_value();
             }
 
             std::optional<T> value_{};
@@ -181,13 +207,19 @@ namespace kkp::coro {
             //     return awaiter{task.handle()};
             // }
 
-            void return_void() const noexcept {
-
+            void return_void() noexcept {
+                has_value_ = true;
             }
 
             void get_value() const {
                check_error();
             }
+
+            bool has_value() const noexcept {
+                return has_value_;
+            }
+
+            bool has_value_{false};
         };
 
     } // namespace detail
@@ -232,8 +264,22 @@ namespace kkp::coro {
             handle_.promise().context_ = context;
         }
 
+        void set_daemon(bool is_daemon) {
+            flag::set_daemon(handle_.promise().flags_, is_daemon);
+        }
+
+        void set_sub_job(bool value) {
+            flag::set_sub_job(handle().promise().flags_, value);
+        }
+
     private:
         std::coroutine_handle<promise_type> handle_;
+
+    public:
+        // template<typename ...Args>
+        // static task<std::tuple<Args...>> all(task<Args>... tasks) {
+        //
+        // }
     };
 
     template<typename T>

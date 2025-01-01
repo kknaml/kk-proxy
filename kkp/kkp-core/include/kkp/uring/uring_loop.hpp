@@ -3,6 +3,7 @@
 #include <kkp/uring/io_data.hpp>
 #include <liburing.h>
 #include <print>
+#include <c++/13/cstring>
 
 namespace kkp::uring {
 
@@ -23,15 +24,17 @@ namespace kkp::uring {
             io_uring_cqe *cqe{};
             while (running_) {
                 // int res = io_uring_wait_cqes(ring_, &cqe, 1, &ts, nullptr);
-                // std::println("enter loop");
+                spdlog::debug("enter loop");
                 int res = io_uring_wait_cqe(ring_, &cqe);
-                // std::println("wait res: {}", res);
+                spdlog::debug("wait res: {}", res);
                 if (res != 0) [[unlikely]] {
                     if (res == -ETIME && cqe != nullptr) { // prep_timeout
                         resume(cqe);
                         continue;
                     } else {
-                        // TODO
+                        spdlog::error("wait cqe error: {}, {}", res, strerror(-res));
+                        resume_error(res, cqe);
+                        continue;
                     }
                 } else {
                     resume(cqe);
@@ -49,13 +52,26 @@ namespace kkp::uring {
                 // TODO
                 return;
             }
-            // std::println("CQE res: {}", cqe->res);
+            spdlog::debug("CQE res: {}", cqe->res);
             if (data->handle_ == nullptr && data->result_ == 0x123456ab) {
                 running_ = false;
                 delete data;
                 return;
             }
             data->result_ = cqe->res;
+            spdlog::debug("pre resume");
+            pool_.enqueue_detach(data->handle_);
+            spdlog::debug("post resume");
+        }
+
+        void resume_error(int code, io_uring_cqe *cqe) noexcept {
+            spdlog::warn("resume error: {}", code);
+            auto *data = reinterpret_cast<io_data *>(cqe->user_data);
+            if (data == nullptr) [[unlikely]] {
+                // TODO
+                return;
+            }
+            data->result_ = code;
             pool_.enqueue_detach(data->handle_);
         }
 

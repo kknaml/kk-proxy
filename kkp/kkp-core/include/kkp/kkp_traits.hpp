@@ -2,6 +2,7 @@
 
 #include <expected>
 #include <system_error>
+#include <spdlog/spdlog.h>
 
 namespace kkp {
 
