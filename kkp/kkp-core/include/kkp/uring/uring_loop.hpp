@@ -60,19 +60,22 @@ namespace kkp::uring {
             }
             data->result_ = cqe->res;
             spdlog::debug("pre resume");
-            pool_.enqueue_detach(data->handle_);
+            // pool_.enqueue_detach(data->handle_);
+            data->handle_();
             spdlog::debug("post resume");
         }
 
         void resume_error(int code, io_uring_cqe *cqe) noexcept {
             spdlog::warn("resume error: {}", code);
+            if (cqe == nullptr) return;
             auto *data = reinterpret_cast<io_data *>(cqe->user_data);
             if (data == nullptr) [[unlikely]] {
                 // TODO
                 return;
             }
             data->result_ = code;
-            pool_.enqueue_detach(data->handle_);
+            // pool_.enqueue_detach(data->handle_);
+            data->handle_();
         }
 
     private:

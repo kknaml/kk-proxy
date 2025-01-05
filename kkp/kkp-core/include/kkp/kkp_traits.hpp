@@ -3,6 +3,7 @@
 #include <expected>
 #include <system_error>
 #include <spdlog/spdlog.h>
+#include <concepts>
 
 namespace kkp {
 
@@ -19,5 +20,16 @@ namespace kkp {
     template<typename T>
     using result = std::expected<T, std::error_code>;
 
+    template<typename F, typename R, typename ...Args>
+    concept func = std::is_invocable_r_v<R, F, Args...>;
+
+    template<typename F, typename ...Args>
+    concept action = func<F, void, Args...>;
+
+    template<typename T>
+    concept kk_stream = requires(T t) {
+        { t.send(std::declval<std::span<std::uint8_t>>(), 0, 0) };
+        { t.recv(std::declval<std::span<std::uint8_t>>(), 0, 0) };
+    };
 
 } // namespace kkp

@@ -60,6 +60,7 @@ namespace kkp::coro {
                 if (callee.promise().ex_) {
                     // TODO handle exception
                     spdlog::error("callee error ");
+                    std::rethrow_exception(callee.promise().ex_);
                 }
                 if (flag::is_daemon(callee.promise().flags_)) [[unlikely]] {
                     spdlog::debug("is deamon xxxxxxxxxxxxx");
@@ -77,8 +78,7 @@ namespace kkp::coro {
 
         template<typename Promise>
         struct base_task_awaiter {
-            std::coroutine_handle<Promise> callee_;
-
+<
             bool await_ready() const noexcept {
                 spdlog::debug("await ready");
                 return !callee_ || callee_.done();
