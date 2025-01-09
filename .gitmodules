@@ -1,3 +1,6 @@
 [submodule "third_party/thread-pool"]
 	path = third_party/thread-pool
 	url = https://github.com/DeveloperPaul123/thread-pool
+[submodule "third_party/botan"]
+	path = third_party/botan
+	url = https://github.com/randombit/botan
