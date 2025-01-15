@@ -9,25 +9,24 @@
 namespace kkp::net {
 
     class address {
-        friend result<address> parse_from_ip(std::string_view addr, uint16_t port) noexcept;
-        friend result<address> parse_from_domain(std::string_view addr, uint16_t port) noexcept;
-        address() = default;
     public:
+        address() = default;
         auto &&sockaddr(this auto &&self) noexcept {
             return self.addr_;
         }
 
         [[nodiscard]]
-        bool is_v4() const noexcept {
+        auto is_v4() const noexcept -> bool {
             return addr_.sa_family == AF_INET;
         }
 
         [[nodiscard]]
-        bool is_v6() const noexcept {
+        auto is_v6() const noexcept -> bool {
             return addr_.sa_family == AF_INET6;
         }
 
         auto &&cast_v4(this auto &&self) noexcept {
+            KKP_DEBUG_ASSERT(self.is_v4());
             using addr_type = std::conditional_t<
                 std::is_const_v<std::remove_reference_t<decltype(self)>>,
                 const ::sockaddr_in &,
@@ -37,20 +36,22 @@ namespace kkp::net {
         }
 
         auto &&cast_v6(this auto &&self) noexcept {
-             using addr_type = std::conditional_t<
-                std::is_const_v<std::remove_reference_t<decltype(self)>>,
-                const ::sockaddr_in6 &,
-                ::sockaddr_in6 &
-             >;
+            KKP_DEBUG_ASSERT(self.is_v6());
+            using addr_type = std::conditional_t<
+            std::is_const_v<std::remove_reference_t<decltype(self)>>,
+            const ::sockaddr_in6 &,
+            ::sockaddr_in6 &
+            >;
             return reinterpret_cast<addr_type>(self.addr_);
         }
 
+        [[nodiscard]]
         std::string ip_address() const noexcept;
 
     private:
         ::sockaddr addr_{};
 
     public:
-        static result<address> from(std::string_view addr, uint16_t port) noexcept;
+        static address from(std::string_view addr, uint16_t port) noexcept(false);
     };
 }

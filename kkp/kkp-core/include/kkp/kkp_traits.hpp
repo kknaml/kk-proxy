@@ -1,11 +1,13 @@
 #pragma once
 
+#include <kkp/kkp_macros.hpp>
 #include <expected>
 #include <system_error>
 #include <spdlog/spdlog.h>
 #include <concepts>
 
 namespace kkp {
+
 
     class non_copy {
     public:
@@ -28,8 +30,28 @@ namespace kkp {
 
     template<typename T>
     concept kk_stream = requires(T t) {
-        { t.send(std::declval<std::span<std::uint8_t>>(), 0, 0) };
-        { t.recv(std::declval<std::span<std::uint8_t>>(), 0, 0) };
+        { t.send(std::declval<std::span<std::uint8_t>>(), 0) }; // span, flag
+        { t.recv(std::declval<std::span<std::uint8_t>>(), 0) }; // span, flag
     };
+
+    // template<typename T = void>
+    // struct defer {
+    //     constexpr defer() = default;
+    // };
+
+    template<action F>
+    struct defer {
+        explicit defer(F &&fn) : destructor_fn_(fn) {}
+
+        F destructor_fn_;
+
+        ~defer() noexcept(noexcept(destructor_fn_())) {
+            destructor_fn_();
+        }
+    };
+
+
+#define KKP_DEFER(fn) kkp::defer CONCATENATE(_defer_, __LINE__)(fn)
+
 
 } // namespace kkp

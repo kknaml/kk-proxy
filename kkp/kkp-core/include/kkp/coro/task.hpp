@@ -60,7 +60,13 @@ namespace kkp::coro {
                 if (callee.promise().ex_) {
                     // TODO handle exception
                     spdlog::error("callee error ");
-                    std::rethrow_exception(callee.promise().ex_);
+                    try {
+                        std::rethrow_exception(callee.promise().ex_);
+                    } catch (const std::exception &e) {
+                        spdlog::error("task exception: {}", e.what());
+                    } catch (...) {
+                        spdlog::error("task exception: unknown");
+                    }
                 }
                 if (flag::is_daemon(callee.promise().flags_)) [[unlikely]] {
                     spdlog::debug("is deamon xxxxxxxxxxxxx");
@@ -78,7 +84,7 @@ namespace kkp::coro {
 
         template<typename Promise>
         struct base_task_awaiter {
-<
+            std::coroutine_handle<Promise> callee_;
             bool await_ready() const noexcept {
                 spdlog::debug("await ready");
                 return !callee_ || callee_.done();
@@ -104,15 +110,20 @@ namespace kkp::coro {
 
         struct base_task_promise {
 
-            // void *operator new(std::size_t size) {
-            //     spdlog::debug("task allocate size: {}", size);
-            //     return ::operator new(size);
-            // }
-            //
-            // void operator delete(void *ptr, std::size_t size) {
-            //     spdlog::debug("task free  size: {}", size);
-            //     ::operator delete(ptr);
-            // }
+            void *operator new(std::size_t size) {
+                spdlog::debug("task allocate size: {}", size);
+                try {
+                    return ::operator new(size);
+                } catch (const std::bad_alloc &e) {
+                    spdlog::error("task allocate error: {}", e.what());
+                    throw;
+                }
+            }
+
+            void operator delete(void *ptr, std::size_t size) {
+                spdlog::debug("task free  size: {}", size);
+                ::operator delete(ptr);
+            }
 
             constexpr std::suspend_always initial_suspend() const noexcept {
                 return {};

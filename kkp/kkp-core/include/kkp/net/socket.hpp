@@ -25,14 +25,48 @@ namespace kkp::net {
             return *this;
         }
 
-        auto send(std::span<uint8_t> buf, size_t len = -1, int flag = 0) -> coro::awaitable_result<int> auto {
-            if (len == -1) len = buf.size();
-            return uring::send(ring_, fd_, buf.data(), len, 0);
+        auto send(std::span<uint8_t> buf, int flag = 0) -> coro::awaitable_result<int> auto {
+            return uring::send(ring_, fd_, buf.data(), buf.size(), flag);
         }
 
-        auto recv(std::span<uint8_t> buf, size_t len = -1, int flag = 0) -> coro::awaitable_result<int> auto {
-            if (len == -1) len = buf.size();
-            return uring::recv(ring_, fd_, buf.data(), len, 0);
+        auto recv(std::span<uint8_t> buf, int flag = 0) -> coro::awaitable_result<int> auto {
+            return uring::recv(ring_, fd_, buf.data(), buf.size(), flag);
+        }
+
+        auto close() noexcept -> bool {
+            const auto fd = this->fd_;
+            if (fd > 0) {
+                if (const auto ret = ::close(fd); ret == 0) {
+                    fd_ = -1;
+                    return true;
+                } else {
+                    spdlog::error("close failed: {}", ret);
+                    return  false;
+                }
+
+            }
+            return false;
+        }
+
+        auto is_alive() const noexcept -> bool {
+            if (fd_ <= 0) return false;
+            int optval{};
+            socklen_t optlen = sizeof(optval);
+            if (getsockopt(fd_, SOL_SOCKET, SO_ERROR, &optval, &optlen) != 0) {
+                return false;
+            }
+            if (optval == 0) {
+                return true;
+            }
+            return false;
+        }
+
+        auto fd() const noexcept -> int {
+            return fd_;
+        }
+
+        ~socket() noexcept {
+            close();
         }
 
     private:

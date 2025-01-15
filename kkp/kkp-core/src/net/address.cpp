@@ -24,7 +24,7 @@ namespace  kkp::net {
         return std::unexpected(std::error_code(0, std::generic_category()));
     }
 
-    result<address> parse_from_domain(std::string_view addr, uint16_t port) noexcept {
+    address parse_from_domain(std::string_view addr, uint16_t port) {
         address result{};
         addrinfo hints{};
 
@@ -35,8 +35,13 @@ namespace  kkp::net {
         addrinfo* res{};
         int ret = getaddrinfo(addr.data(), nullptr, &hints, &res);
         if (ret != 0) {
-            return make_custom_error<address>(ret, "getaddrinfo failed: " + std::string(gai_strerror(ret)) + " for " + std::string(addr));
+            // return make_custom_error<address>(ret, "getaddrinfo failed: " + std::string(gai_strerror(ret)) + " for " + std::string(addr));
+            throw std::runtime_error("getaddrinfo failed: " + std::string(gai_strerror(ret)) + " for " + std::string(addr));
         }
+        KKP_DEFER([res] {
+            freeaddrinfo(res);
+        });
+
 
         for (auto *ptr = res; ptr != nullptr; ptr = ptr->ai_next) {
             if (ptr->ai_family == AF_INET) { // IPV4
@@ -44,21 +49,18 @@ namespace  kkp::net {
                 memcpy(&v4, ptr->ai_addr, sizeof(v4));
                 v4.sin_port = htons(port);
                 result.sockaddr().sa_family = AF_INET;
-                freeaddrinfo(res);
                 return result;
             } else if (ptr->ai_family == AF_INET6) { // IPV6
                 auto &v6 = result.cast_v6();
                 memcpy(&v6, ptr->ai_addr, sizeof(v6));
                 v6.sin6_port = htons(port);
                 result.sockaddr().sa_family = AF_INET6;
-                freeaddrinfo(res);
                 return result;
             }
         }
 
-        freeaddrinfo(res);
-        // throw std::runtime_error("No valid address found for: " + std::string(addr));
-        return make_custom_error<address>(0, "No valid address found for: " + std::string(addr));
+        throw std::runtime_error("No valid address found for: " + std::string(addr));
+        // return make_custom_error<address>(0, "No valid address found for: " + std::string(addr));
     }
 
 
@@ -77,10 +79,10 @@ namespace  kkp::net {
         return "error";
     }
 
-    result<address> address::from(std::string_view addr, uint16_t port) noexcept {
+    address address::from(std::string_view addr, uint16_t port) {
         auto res = parse_from_ip(addr, port);
         if (res) {
-            return res;
+            return res.value();
         }
         return parse_from_domain(addr, port);
     }

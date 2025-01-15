@@ -9,7 +9,7 @@ namespace kkp::ssl {
     };
 
     enum class ssl_status {
-        ok, error, want_read, want_write
+        ok, error, error_syscall, want_read, want_write
     };
 
     inline ssl_status get_ssl_status(const SSL *ssl, int n) noexcept {
@@ -20,6 +20,8 @@ namespace kkp::ssl {
                 return ssl_status::want_read;
             case SSL_ERROR_WANT_WRITE:
                 return ssl_status::want_write;
+            case SSL_ERROR_SYSCALL:
+                return ssl_status::error_syscall;
             default:
                 return ssl_status::error;
         }

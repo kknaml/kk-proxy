@@ -53,16 +53,15 @@ namespace kkp::uring {
                 return;
             }
             spdlog::debug("CQE res: {}", cqe->res);
-            if (data->handle_ == nullptr && data->result_ == 0x123456ab) {
+            if (data == &io_data_completed) {
                 running_ = false;
-                delete data;
                 return;
             }
             data->result_ = cqe->res;
-            spdlog::debug("pre resume");
+            // spdlog::debug("pre resume");
             // pool_.enqueue_detach(data->handle_);
             data->handle_();
-            spdlog::debug("post resume");
+            // spdlog::debug("post resume");
         }
 
         void resume_error(int code, io_uring_cqe *cqe) noexcept {

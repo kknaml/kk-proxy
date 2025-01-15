@@ -12,7 +12,7 @@ namespace kkp {
     class io_context : public non_copy {
     public:
         explicit io_context(int concurrency_n = 1) : ring_(), loop_(concurrency_n, &ring_) {
-            io_uring_queue_init(32, &ring_, 0);
+            io_uring_queue_init(1024, &ring_, 0);
         }
 
         // void spawn(task<> &&task) {
@@ -41,13 +41,17 @@ namespace kkp {
             return coro::task<T>{handle};
         }
 
+        void launch_detached(task<> &&task) {
+            task.set_context(this);
+            task.set_daemon(true);
+            task.take_handle()();
+        }
+
         void finish() {
             spdlog::debug("finish task1");
             auto *sqe = io_uring_get_sqe(&ring_);
-            auto *data = new uring::io_data{
-                nullptr, 0x123456ab
-            };
-            io_uring_sqe_set_data(sqe, data);
+            auto *data = &uring::io_data_completed;
+            io_uring_sqe_set_data(sqe, const_cast<void *>(static_cast<const void *>(data)));
             io_uring_prep_nop(sqe);
             io_uring_submit(&ring_);
             spdlog::debug("finish task2");
@@ -68,4 +72,4 @@ namespace kkp {
         return std::declval<T>();
     }
 
-};ll
+}
