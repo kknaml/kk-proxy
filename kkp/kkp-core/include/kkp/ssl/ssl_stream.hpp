@@ -17,6 +17,24 @@ namespace kkp::ssl {
             leftover_.clear();
         }
 
+        ssl_stream(ssl_stream &&other) noexcept
+            : raw_stream_(std::move(other.raw_stream_))
+            , ssl_engine_{std::move(other.ssl_engine_)}
+            , leftover_{std::move(other.leftover_)}
+        {
+            other.leftover_.clear();
+        }
+
+        ssl_stream &operator=(ssl_stream &&other) noexcept {
+            if (this != &other) {
+                raw_stream_ = std::move(other.raw_stream_);
+                ssl_engine_ = std::move(other.ssl_engine_);
+                leftover_ = std::move(other.leftover_);
+                other.leftover_.clear();
+            }
+            return *this;
+        }
+
         task<result<void>> handshake(handshake_type type) noexcept {
             spdlog::debug("start handshake");
             auto *ssl = ssl_engine_.ssl();
@@ -211,6 +229,10 @@ namespace kkp::ssl {
                 }
             }
             co_return total_decrypted;
+        }
+
+        auto is_alive() const noexcept -> bool {
+            return raw_stream_.is_alive();
         }
 
         RawStream &raw_stream() noexcept {

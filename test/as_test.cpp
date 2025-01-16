@@ -6,6 +6,7 @@
 #include <kkp/net/socket.hpp>
 #include <kkp/ssl/ssl_engine.hpp>
 #include <kkp/ssl/ssl_stream.hpp>
+#include <kkp/http/v2/frames/frames.hpp>
 
 const char *cert_file = "/root/workspace/auto/kkproxy/server.crt";
 const char *key_file = "/root/workspace/auto/kkproxy/server.key";
@@ -19,7 +20,7 @@ std::string to_hex_string(std::span<unsigned char> str) noexcept {
     return result;
 }
 
-constexpr char hello[] = "GET / HTTP/1.1\r\n"
+constexpr char hello[] = "GET /api/all HTTP/1.1\r\n"
                          "\r\n";
 
 
@@ -30,7 +31,7 @@ int main() {
 
     ctx.block_run([&ctx] -> kkp::coro::task<> {
 
-        auto endpoint = kkp::net::endpoint::from("baidu.com", 443);
+        auto endpoint = kkp::net::endpoint::from("tls.peet.ws", 443);
         auto socket = co_await kkp::net::socket::open(endpoint);
         auto res = co_await socket.connect();
         if (!res.has_value()) {

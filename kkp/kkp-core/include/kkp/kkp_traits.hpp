@@ -32,6 +32,7 @@ namespace kkp {
     concept kk_stream = requires(T t) {
         { t.send(std::declval<std::span<std::uint8_t>>(), 0) }; // span, flag
         { t.recv(std::declval<std::span<std::uint8_t>>(), 0) }; // span, flag
+        { t.is_alive() } -> std::same_as<bool>;
     };
 
     // template<typename T = void>
