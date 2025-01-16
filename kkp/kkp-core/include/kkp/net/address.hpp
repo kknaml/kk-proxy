@@ -8,9 +8,15 @@
 
 namespace kkp::net {
 
+    auto init_addr_from_fd(int fd, sockaddr *addr) -> void;
+
     class address {
     public:
         address() = default;
+
+        explicit address(const sockaddr &addr) noexcept
+                : addr_(addr) {}
+
         auto &&sockaddr(this auto &&self) noexcept {
             return self.addr_;
         }
@@ -26,7 +32,7 @@ namespace kkp::net {
         }
 
         auto &&cast_v4(this auto &&self) noexcept {
-            KKP_DEBUG_ASSERT(self.is_v4());
+            // KKP_DEBUG_ASSERT(self.is_v4());
             using addr_type = std::conditional_t<
                 std::is_const_v<std::remove_reference_t<decltype(self)>>,
                 const ::sockaddr_in &,
@@ -36,7 +42,7 @@ namespace kkp::net {
         }
 
         auto &&cast_v6(this auto &&self) noexcept {
-            KKP_DEBUG_ASSERT(self.is_v6());
+            // KKP_DEBUG_ASSERT(self.is_v6());
             using addr_type = std::conditional_t<
             std::is_const_v<std::remove_reference_t<decltype(self)>>,
             const ::sockaddr_in6 &,
@@ -52,6 +58,6 @@ namespace kkp::net {
         ::sockaddr addr_{};
 
     public:
-        static address from(std::string_view addr, uint16_t port) noexcept(false);
+        static address from(std::string_view addr, uint16_t port = 0) noexcept(false);
     };
 }

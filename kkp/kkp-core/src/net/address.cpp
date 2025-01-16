@@ -7,6 +7,23 @@
 
 namespace  kkp::net {
 
+    auto init_addr_from_fd(int fd, sockaddr *addr) -> void {
+        socklen_t len = sizeof(sockaddr_storage);
+        sockaddr_storage temp_addr{};
+        if (getsockname(fd, reinterpret_cast<sockaddr *>(&temp_addr), &len) == -1) {
+            //return std::unexpected(std::error_code(errno, std::generic_category()));
+            throw std::runtime_error("getsockname failed: " + std::string(strerror(errno)));
+        }
+        if (temp_addr.ss_family == AF_INET) {
+            memcpy(addr, &temp_addr, sizeof(sockaddr_in));
+            return;
+        } else if (temp_addr.ss_family == AF_INET6) {
+            memcpy(addr, &temp_addr, sizeof(sockaddr_in6));
+            return;
+        }
+        throw std::runtime_error("Unknown address family");
+    }
+
 
     result<address> parse_from_ip(std::string_view addr, uint16_t port) noexcept {
         address result{};

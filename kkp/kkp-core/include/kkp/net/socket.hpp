@@ -3,16 +3,24 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <kkp/utils.hpp>
+#include <kkp/net/endpoint.hpp>
 
 namespace kkp::net {
 
     class socket {
     public:
-        explicit socket(io_uring *ring, int fd) : ring_(ring), fd_(fd) {}
+        socket(io_uring *ring, int fd) : ring_(ring), fd_(fd) {}
+
+        socket(io_uring *ring, int fd, endpoint peer) : ring_(ring), fd_(fd), peer_(peer) {}
+
+        socket(io_uring *ring, int fd, address addr) : ring_(ring), fd_(fd) {
+            peer_.address() = addr;
+        }
 
         socket(socket &&other) noexcept :
             ring_(std::exchange(other.ring_, nullptr)),
-            fd_(std::exchange(other.fd_, -1)) {}
+            fd_(std::exchange(other.fd_, -1)),
+            peer_(std::move(other.peer_)){}
 
         socket &operator=(socket &&other) noexcept {
             if (this != &other) {
@@ -21,8 +29,13 @@ namespace kkp::net {
                 }
                 ring_ = std::exchange(other.ring_, nullptr);
                 fd_ = std::exchange(other.fd_, -1);
+                peer_ = std::move(other.peer_);
             }
             return *this;
+        }
+
+        auto connect() -> coro::awaitable_result<int> auto {
+            return uring::connect(ring_, fd_, &peer_.address().sockaddr(), sizeof(peer_.address().sockaddr()));
         }
 
         auto send(std::span<uint8_t> buf, int flag = 0) -> coro::awaitable_result<int> auto {
@@ -61,8 +74,14 @@ namespace kkp::net {
             return false;
         }
 
+        [[nodiscard]]
         auto fd() const noexcept -> int {
             return fd_;
+        }
+
+        [[nodiscard]]
+        auto peer(this auto &&self) noexcept -> auto && {
+            return self.peer_;
         }
 
         ~socket() noexcept {
@@ -72,6 +91,19 @@ namespace kkp::net {
     private:
         io_uring *ring_;
         int fd_;
+        net::address addr_{};
+        endpoint peer_{};
+
+    public:
+        static auto open() -> task<socket> {
+            auto *context = co_await coro::this_context;
+            co_return socket(context->ring(), ::socket(AF_INET, SOCK_STREAM, 0));
+        }
+
+        static auto open(endpoint peer) -> task<socket> {
+            auto *context = co_await coro::this_context;
+            co_return socket(context->ring(), ::socket(AF_INET, SOCK_STREAM, 0), peer);
+        }
     };
 
 
@@ -84,7 +116,9 @@ namespace kkp::net {
         auto await_resume() const noexcept -> result<socket> {
             int ret = uring::accept::await_resume();
             if (ret > 0) {
-                return socket(this->ring_, ret);
+                auto s = socket(this->ring_, ret);
+                s.peer().address().sockaddr() = addr_;
+                return s;
             } else {
                 return make_sys_error<socket>(ret);
             }

@@ -26,4 +26,6 @@ namespace kkp {
         co_return co_await delay(context->ring(), mills);
     }
 
+    std::string to_hex_string(std::span<unsigned char> str) noexcept;
+
 } // namespace kkp

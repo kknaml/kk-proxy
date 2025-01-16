@@ -2,8 +2,9 @@
 
 #include <kkp/error_code.hpp>
 #include <kkp/ssl/ssl_engine.hpp>
+#include <kkp/ssl/kkp_openssl.hpp>
 
-std::string to_hex_string(std::span<unsigned char> str) noexcept;
+
 namespace kkp::ssl {
 
     template<kk_stream RawStream>
@@ -173,10 +174,15 @@ namespace kkp::ssl {
             int total_decrypted = 0;
 
             while (true) {
+                auto n1 = ssl_engine_.read_pending();
+                auto n2 = ssl_engine_.write_pending();
                 if (const auto buf_remaining = len - total_decrypted; buf_remaining > 0) [[likely]] {
                     const auto [decrypted, status ] = ssl_engine_.ssl_read(buf.data() + total_decrypted, static_cast<int>(buf_remaining));
                     if (decrypted > 0) {
                         total_decrypted += decrypted;
+                        if (status == ssl_status::ok) {
+                            break;
+                        }
                     } else {
                         if (status == ssl_status::want_read || status == ssl_status::want_write) {
                             break;

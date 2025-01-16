@@ -12,7 +12,7 @@ namespace kkp::uring {
 
         result<int> await_resume() const noexcept {
             int res = this->data_.result_;
-            if (res > 0) return res;
+            if (res >= 0) return res;
             return make_sys_error<int>(res);
         }
     };
