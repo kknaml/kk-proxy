@@ -13,8 +13,6 @@ project(kkproxy LANGUAGES CXX C)
 
 find_package(OpenSSL REQUIRED)
 
-add_executable(main app/main.cpp)
-target_link_libraries(main PUBLIC asio OpenSSL::SSL)
 
 # target_link_options(main PRIVATE -stdlib=libc++)
 add_subdirectory(third_party)
