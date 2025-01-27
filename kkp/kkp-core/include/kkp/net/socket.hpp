@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <kkp/utils.hpp>
 #include <kkp/net/endpoint.hpp>
+#include <kkp/coro/task.hpp>
 
 namespace kkp::net {
 
@@ -95,12 +96,12 @@ namespace kkp::net {
         endpoint peer_{};
 
     public:
-        static auto open() -> task<socket> {
+        static auto open() -> coro::task<socket> {
             auto *context = co_await coro::this_context;
             co_return socket(context->ring(), ::socket(AF_INET, SOCK_STREAM, 0));
         }
 
-        static auto open(endpoint peer) -> task<socket> {
+        static auto open(endpoint peer) -> coro::task<socket> {
             auto *context = co_await coro::this_context;
             co_return socket(context->ring(), ::socket(AF_INET, SOCK_STREAM, 0), peer);
         }
@@ -206,7 +207,7 @@ namespace kkp::net {
         sockaddr_in addr_{};
 
     public:
-        static auto open() -> task<server_socket> {
+        static auto open() -> coro::task<server_socket> {
             auto *context = co_await coro::this_context;
             co_return server_socket(context->ring());
         }

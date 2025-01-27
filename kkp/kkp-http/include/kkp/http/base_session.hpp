@@ -13,7 +13,7 @@ namespace kkp::http {
         quic
     };
 
-    class base_session : non_copy {
+    class base_session : non_copy, std::enable_shared_from_this<base_session> {
     public:
 
         explicit base_session(stream stream) : underlying_stream_(std::move(stream)) {
@@ -33,6 +33,10 @@ namespace kkp::http {
             return self.underlying_stream_;
         }
 
+        virtual void close() {
+
+        }
+
         virtual ~base_session() = default;
 
     protected:
@@ -41,5 +45,6 @@ namespace kkp::http {
     };
 
     using http_session = std::unique_ptr<base_session>;
+    using http_shared_session = std::shared_ptr<base_session>;
 
 };

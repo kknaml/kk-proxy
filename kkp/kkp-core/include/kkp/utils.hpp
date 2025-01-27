@@ -2,6 +2,8 @@
 
 #include <kkp/uring/awaiter/all.hpp>
 #include <kkp/coro/coro_base.hpp>
+#include <kkp/coro/task.hpp>
+#include <kkp/io_context.hpp>
 
 namespace kkp {
 
@@ -16,12 +18,12 @@ namespace kkp {
         return delay(ring, &ts);
     }
 
-    inline auto delay(__kernel_timespec *ts) -> task<result<void>> {
+    inline auto delay(__kernel_timespec *ts) -> coro::task<result<void>> {
         auto *context = co_await coro::this_context;
         co_return co_await delay(context->ring(), ts);
     }
 
-    inline auto delay(long mills) -> task<result<void>> {
+    inline auto delay(long mills) -> coro::task<result<void>> {
         auto *context = co_await coro::this_context;
         co_return co_await delay(context->ring(), mills);
     }

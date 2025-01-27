@@ -2,6 +2,7 @@
 
 #include <kkp/uring/awaiter/accept.hpp>
 #include <kkp/uring/awaiter/connect.hpp>
+#include <kkp/uring/awaiter/link_timeout.hpp>
 #include <kkp/uring/awaiter/read.hpp>
 #include <kkp/uring/awaiter/recv.hpp>
 #include <kkp/uring/awaiter/send.hpp>

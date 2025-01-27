@@ -31,22 +31,30 @@ namespace kkp {
             return std::get<Stream>(self.stream_);
         }
 
-        auto send(std::span<uint8_t> buf, int flags = 0) {
-            return std::visit([&](auto &&stream) {
-                return stream.send(buf, flags);
+        [[nodiscard]]
+        auto send(std::span<uint8_t> buf, int flags = 0) -> coro::task<int> {
+            return std::visit([&](auto &&stream) -> coro::task<int> {
+                co_return co_await stream.send(buf, flags);
             }, stream_);
         }
 
-        auto recv(std::span<uint8_t> buf, int flags = 0) {
-            return std::visit([&](auto &&stream) {
-                return stream.recv(buf, flags);
+        [[nodiscard]]
+        auto recv(std::span<uint8_t> buf, int flags = 0) -> coro::task<int> {
+            return std::visit([&](auto &&stream) -> coro::task<int> {
+                co_return co_await stream.recv(buf, flags);
             }, stream_);
         }
 
         [[nodiscard]]
         auto is_alive() const noexcept -> bool {
-            return std::visit([&](auto &&stream) {
+            return std::visit([](auto &&stream) {
                 return stream.is_alive();
+            }, stream_);
+        }
+
+        auto close() {
+            return std::visit([](auto &&stream) {
+                return stream.close();
             }, stream_);
         }
 
@@ -55,5 +63,19 @@ namespace kkp {
     };
 
     using stream = base_stream<net::socket, ssl::ssl_stream<net::socket>>;
+
+    inline auto stream_clear_left(stream &stream) noexcept -> size_t {
+        return std::visit(
+            overloads {
+                [] (ssl::ssl_stream<net::socket> &ssl_stream) -> size_t {
+                    return ssl_stream.clear_left();
+                },
+                [] (auto &&) -> size_t {
+                    return 0;
+                }
+            },
+            stream.get_varient()
+        );
+    }
 
 } // namespace kkp

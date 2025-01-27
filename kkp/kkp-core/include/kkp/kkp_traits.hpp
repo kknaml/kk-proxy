@@ -33,6 +33,12 @@ namespace kkp {
         { t.send(std::declval<std::span<std::uint8_t>>(), 0) }; // span, flag
         { t.recv(std::declval<std::span<std::uint8_t>>(), 0) }; // span, flag
         { t.is_alive() } -> std::same_as<bool>;
+        t.close();
+    };
+
+    template<typename ...Ts>
+    struct overloads : Ts... {
+        using Ts::operator()...;
     };
 
     // template<typename T = void>
@@ -54,5 +60,19 @@ namespace kkp {
 
 #define KKP_DEFER(fn) kkp::defer CONCATENATE(_defer_, __LINE__)(fn)
 
+    template<typename T, typename Visitor>
+    requires
+    std::invocable<Visitor, T>
+    && std::invocable<Visitor>
+    && std::is_convertible_v<std::invoke_result_t<Visitor, T>, std::invoke_result_t<Visitor>>
+    && std::is_convertible_v<std::invoke_result_t<Visitor>, std::invoke_result_t<Visitor, T>>
+    auto match(Visitor &&visitor, std::optional<T> &op)
+    noexcept(noexcept(visitor()) && noexcept(visitor(std::declval<T>()))) -> decltype(auto) {
+        if (op.has_value()) {
+            return std::invoke(visitor, *op);
+        } else {
+            return std::invoke(visitor);
+        }
+    }
 
 } // namespace kkp

@@ -3,7 +3,7 @@
 #include <kkp/error_code.hpp>
 #include <kkp/ssl/ssl_engine.hpp>
 #include <kkp/ssl/kkp_openssl.hpp>
-
+#include <kkp/coro/task.hpp>
 
 namespace kkp::ssl {
 
@@ -35,7 +35,7 @@ namespace kkp::ssl {
             return *this;
         }
 
-        task<result<void>> handshake(handshake_type type) noexcept {
+        coro::task<result<void>> handshake(handshake_type type) noexcept {
             spdlog::debug("start handshake");
             auto *ssl = ssl_engine_.ssl();
             int (*op)(SSL *);
@@ -124,7 +124,7 @@ namespace kkp::ssl {
         }
 
 
-        auto send(std::span<uint8_t> buf, int flag = 0) ->  task<int> {
+        auto send(std::span<uint8_t> buf, int flag = 0) -> coro::task<int> {
             const auto len = buf.size();
             size_t bytes_consumed = 0;
 
@@ -162,7 +162,7 @@ namespace kkp::ssl {
             co_return bytes_consumed;
         }
 
-        auto recv(std::span<uint8_t> buf, int flag = 0) -> task<int> {
+        auto recv(std::span<uint8_t> buf, int flag = 0) -> coro::task<int> {
             const auto len = buf.size();
             if (auto res = read_leftover(buf); res > 0) {
                 co_return res;
@@ -231,8 +231,19 @@ namespace kkp::ssl {
             co_return total_decrypted;
         }
 
+        auto clear_left() noexcept -> size_t {
+            const auto size = leftover_.size();
+            leftover_.clear();
+            return size;
+        }
+
+        [[nodiscard]]
         auto is_alive() const noexcept -> bool {
             return raw_stream_.is_alive();
+        }
+
+        auto close() noexcept(noexcept(raw_stream_.close())) {
+            return raw_stream_.close();
         }
 
         RawStream &raw_stream() noexcept {
